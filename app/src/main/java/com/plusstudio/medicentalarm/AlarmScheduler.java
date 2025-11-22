@@ -5,11 +5,15 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 import java.util.Calendar;
 
 public class AlarmScheduler {
 
+    private static final String TAG = "AlarmScheduler";
     private Context context;
     private AlarmManager alarmManager;
 
@@ -19,28 +23,27 @@ public class AlarmScheduler {
     }
 
     /**
-     * جدولة منبه جديد
-     * @param alarm بيانات المنبه
+     * جدولة منبه جديد - يعمل حتى لو التطبيق مغلق
      */
     public void scheduleAlarm(Alarm alarm) {
-        if (alarmManager == null) return;
+        if (alarmManager == null) {
+            Log.e(TAG, "AlarmManager غير متوفر");
+            return;
+        }
 
-        // تحويل الوقت
         String[] timeParts = alarm.getStartTime().split(":");
         int hour = Integer.parseInt(timeParts[0]);
         int minute = Integer.parseInt(timeParts[1]);
 
-        // حساب الفاصل الزمني بين التنبيهات حسب عدد المرات
         int repeatCount = alarm.getRepeatCount();
 
-        // جدولة كل تنبيه
         for (int i = 0; i < repeatCount; i++) {
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.HOUR_OF_DAY, hour);
             calendar.set(Calendar.MINUTE, minute);
             calendar.set(Calendar.SECOND, 0);
+            calendar.set(Calendar.MILLISECOND, 0);
 
-            // إضافة فاصل زمني لكل تنبيه (توزيع على اليوم)
             if (repeatCount > 1) {
                 int intervalHours = 24 / repeatCount;
                 calendar.add(Calendar.HOUR_OF_DAY, i * intervalHours);
@@ -54,6 +57,7 @@ public class AlarmScheduler {
             int uniqueId = alarm.getId() * 100 + i;
 
             Intent intent = new Intent(context, AlarmReceiver.class);
+            intent.setAction("com.example.medicinealarm.ALARM_TRIGGERED");
             intent.putExtra("reason", alarm.getReason());
             intent.putExtra("alarm_id", uniqueId);
 
@@ -62,60 +66,103 @@ public class AlarmScheduler {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
 
-            // حساب فترة التكرار
-            long intervalMillis = getIntervalMillis(alarm.getPeriod());
-
             // جدولة المنبه
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                );
-            } else {
-                alarmManager.setRepeating(
-                        AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        intervalMillis,
-                        pendingIntent
-                );
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setAlarmClock(
+                                new AlarmManager.AlarmClockInfo(calendar.getTimeInMillis(), pendingIntent),
+                                pendingIntent
+                        );
+                    } else {
+                        alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP,
+                                calendar.getTimeInMillis(),
+                                pendingIntent
+                        );
+                    }
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setAlarmClock(
+                            new AlarmManager.AlarmClockInfo(calendar.getTimeInMillis(), pendingIntent),
+                            pendingIntent
+                    );
+                } else {
+                    alarmManager.setExact(
+                            AlarmManager.RTC_WAKEUP,
+                            calendar.getTimeInMillis(),
+                            pendingIntent
+                    );
+                }
+
+                Log.d(TAG, "✅ تم جدولة المنبه: " + alarm.getReason() + " في " + calendar.getTime());
+            } catch (SecurityException e) {
+                Log.e(TAG, "❌ لا يوجد إذن للمنبهات: " + e.getMessage());
             }
         }
     }
 
     /**
-     * جدولة تنبيه تجريبي سريع (بعد دقيقة واحدة)
+     * تنبيه تجريبي فوري
      */
     public void scheduleTestAlarm(Alarm alarm) {
+        Log.d(TAG, "جدولة تنبيه تجريبي للمنبه: " + alarm.getReason());
+
+        Toast.makeText(context, "⏳ التنبيه سيصل بعد 3 ثواني...", Toast.LENGTH_SHORT).show();
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "إرسال التنبيه الآن!");
+
+            Intent intent = new Intent(context, AlarmReceiver.class);
+            intent.putExtra("reason", "🧪 تجربة: " + alarm.getReason());
+            intent.putExtra("alarm_id", alarm.getId() + 9000);
+
+            AlarmReceiver receiver = new AlarmReceiver();
+            receiver.onReceive(context, intent);
+
+        }, 3000);
+    }
+
+    /**
+     * جدولة تنبيه حقيقي بعد ثواني محددة (للتجربة مع التطبيق مغلق)
+     */
+    public void scheduleRealTestAlarm(Alarm alarm, int seconds) {
         if (alarmManager == null) return;
 
         Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.MINUTE, 1); // بعد دقيقة واحدة
+        calendar.add(Calendar.SECOND, seconds);
 
         Intent intent = new Intent(context, AlarmReceiver.class);
+        intent.setAction("com.example.medicinealarm.ALARM_TRIGGERED");
         intent.putExtra("reason", "🧪 تجربة: " + alarm.getReason());
-        intent.putExtra("alarm_id", alarm.getId());
+        intent.putExtra("alarm_id", alarm.getId() + 8000);
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context, alarm.getId() + 9000, intent,
+                context, alarm.getId() + 8000, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.getTimeInMillis(),
-                    pendingIntent
-            );
-        } else {
-            alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.getTimeInMillis(),
-                    pendingIntent
-            );
-        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setAlarmClock(
+                            new AlarmManager.AlarmClockInfo(calendar.getTimeInMillis(), pendingIntent),
+                            pendingIntent
+                    );
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAlarmClock(
+                        new AlarmManager.AlarmClockInfo(calendar.getTimeInMillis(), pendingIntent),
+                        pendingIntent
+                );
+            }
 
-        Toast.makeText(context, "سيصل التنبيه التجريبي بعد دقيقة واحدة!", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, "✅ سيصل التنبيه بعد " + seconds + " ثانية\nيمكنك إغلاق التطبيق!",
+                    Toast.LENGTH_LONG).show();
+            Log.d(TAG, "✅ تم جدولة تنبيه تجريبي بعد " + seconds + " ثانية");
+        } catch (Exception e) {
+            Log.e(TAG, "❌ خطأ في جدولة المنبه: " + e.getMessage());
+            Toast.makeText(context, "❌ فشل جدولة المنبه", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
@@ -135,19 +182,6 @@ public class AlarmScheduler {
                 alarmManager.cancel(pendingIntent);
             }
         }
-    }
-
-    private long getIntervalMillis(String period) {
-        switch (period) {
-            case "يومي":
-                return AlarmManager.INTERVAL_DAY;
-            case "أسبوعي":
-                return AlarmManager.INTERVAL_DAY * 7;
-            case "شهري":
-                return AlarmManager.INTERVAL_DAY * 30;
-            case "دائم":
-            default:
-                return AlarmManager.INTERVAL_DAY;
-        }
+        Log.d(TAG, "✅ تم إلغاء المنبه: " + alarm.getReason());
     }
 }

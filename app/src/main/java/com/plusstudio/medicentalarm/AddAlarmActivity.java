@@ -130,10 +130,8 @@ public class AddAlarmActivity extends AppCompatActivity {
             alarm.setId((int) result);
 
             if (isTestMode) {
-                // وضع التجربة - تنبيه بعد دقيقة
-                alarmScheduler.scheduleTestAlarm(alarm);
-                Toast.makeText(this, "✅ تم حفظ التنبيه\n⏱ سيصلك تنبيه تجريبي بعد دقيقة!",
-                        Toast.LENGTH_LONG).show();
+                // وضع التجربة - تنبيه بعد 15 ثانية (يعمل حتى لو التطبيق مغلق)
+                alarmScheduler.scheduleRealTestAlarm(alarm, 15);
             } else {
                 // الوضع العادي
                 alarmScheduler.scheduleAlarm(alarm);
