@@ -37,6 +37,44 @@
             android:orientation="vertical"
             android:padding="24dp">
 
+            <!-- ⭐ وضع التجربة السريعة -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:cardBackgroundColor="#FFF3E0"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <CheckBox
+                        android:id="@+id/cbTestMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🧪 وضع التجربة السريعة"
+                        android:textColor="#E65100"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginStart="32dp"
+                        android:text="فعّل هذا الخيار لاستلام تنبيه تجريبي بعد دقيقة واحدة فقط!"
+                        android:textColor="#BF360C"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
             <!-- Reason -->
             <TextView
                 android:layout_width="wrap_content"
@@ -76,7 +114,7 @@
                 android:background="@drawable/edittext_background"
                 android:clickable="true"
                 android:focusable="false"
-                android:hint="اضغط لاختيار الوقت"
+                android:hint="اضغط لاختيار الوقت (اختياري في وضع التجربة)"
                 android:paddingHorizontal="16dp"
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_hint" />

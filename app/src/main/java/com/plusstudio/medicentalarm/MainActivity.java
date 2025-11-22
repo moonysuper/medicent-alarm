@@ -17,6 +17,7 @@ public class MainActivity extends AppCompatActivity implements AlarmAdapter.OnAl
     private AlarmAdapter adapter;
     private List<Alarm> alarmList;
     private DatabaseHelper dbHelper;
+    private AlarmScheduler alarmScheduler;
     private TextView emptyText;
 
     @Override
@@ -25,6 +26,7 @@ public class MainActivity extends AppCompatActivity implements AlarmAdapter.OnAl
         setContentView(R.layout.activity_main);
 
         dbHelper = new DatabaseHelper(this);
+        alarmScheduler = new AlarmScheduler(this);
 
         recyclerView = findViewById(R.id.alarmsRecyclerView);
         emptyText = findViewById(R.id.emptyText);
@@ -64,7 +66,11 @@ public class MainActivity extends AppCompatActivity implements AlarmAdapter.OnAl
 
     @Override
     public void onDelete(Alarm alarm) {
+        // إلغاء المنبه المجدول
+        alarmScheduler.cancelAlarm(alarm);
+        // حذف من قاعدة البيانات
         dbHelper.deleteAlarm(alarm.getId());
+        // إعادة تحميل القائمة
         loadAlarms();
     }
 }
